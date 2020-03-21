@@ -122,17 +122,6 @@ void handlePageFault(Operation op){
 void performOp(Operation op){
 	//Check the translation. If the translation is not valid, handle a page fault. Then, perform the op.
 	if(!pageTables[op.pid][op.virtualPageNum].valid){
-		// printf("Page fault\n\n\n");
-		// rme r;
-  //       	for(int i = 0; i<NUM_PHYSICAL_PAGES; i++){
-  //       		r = physicalMemory[i];
-  //       		if(r.avail){
-  //       			printf("rm[%d]: available\n", i);
-  //       		}
-  //       		else{
-  //       			printf("rm[%d]: proc = %u, vpn = %u, ref = %d, dirty = %d\n", i, r.proc, r.vpn, r.referenced, r.dirty );
-  //       		}
-  //       	}
 		numPageFaults++;
 		//handle page fault
 		handlePageFault(op);
@@ -174,17 +163,6 @@ int parseFile(FILE* file){
         	op.accessType = WRITE;
         }
 
-        // printf("%hhu %hx %c\n", pid, address, a);
-        // printf("Virtual page: %u\n", op.virtualPageNum);
-
-        // if(address == 0xec78){
-        // 	rme r;
-        // 	for(int i = 0; i<NUM_PHYSICAL_PAGES; i++){
-        // 		r = physicalMemory[i];
-        // 		printf("rm[%d]: proc = %u, vpn = %u, ref = %d, dirty = %d\n", i, r.proc, r.vpn, r.referenced, r.dirty );
-        // 	}
-        // }
-
         //Operate on the command
         performOp(op);
         //Every 200 memory accesses, reset all the referenced fields
@@ -192,8 +170,6 @@ int parseFile(FILE* file){
     		for(int i = 0; i<NUM_PHYSICAL_PAGES; i++){
     			physicalMemory[i].referenced = false;
     		}
-
-    		//printf("\n\n\n\n\n\n\n\n\n\n\nref bit reset\n\n\n\n\n\n\n\n\n\n\n");
     	}
 
     }
