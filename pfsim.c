@@ -45,11 +45,9 @@ rme physicalMemory[NUM_PHYSICAL_PAGES];
 
 
 uint16_t evictPage(){
-	//Look for an unreferenced page frame where the dirty bit is on, and replace it.
+	//Look for an unreferenced page frame where the dirty bit is off, and replace it.
 	for(uint16_t i = 0; i<NUM_PHYSICAL_PAGES; i++){
-		if(!physicalMemory[i].referenced && physicalMemory[i].dirty){
-			//Write page back to disk, because it was dirty.
-			numDiskAccesses++;
+		if(!physicalMemory[i].referenced && !physicalMemory[i].dirty){
 			//Set the mapped page table entry to invalid.
 			pageTables[physicalMemory[i].proc][physicalMemory[i].vpn].valid = false;
 			//Set the page to available
@@ -59,10 +57,11 @@ uint16_t evictPage(){
 		}
 	}
 	
-	//If that's not found, look for one where dirty bit is off, replace it.
+	//If that's not found, look for one where dirty bit is on, replace it.
 	for(uint16_t i = 0; i<NUM_PHYSICAL_PAGES; i++){
-		if(!physicalMemory[i].referenced && !physicalMemory[i].dirty){
-			//No need to write page back to disk; it's not dirty.
+		if(!physicalMemory[i].referenced && physicalMemory[i].dirty){
+			//Write page back to disk, because it was dirty.
+			numDiskAccesses++;
 			//Set the mapped page table entry to invalid.
 			pageTables[physicalMemory[i].proc][physicalMemory[i].vpn].valid = false;
 			//Set the page to available
@@ -123,17 +122,17 @@ void handlePageFault(Operation op){
 void performOp(Operation op){
 	//Check the translation. If the translation is not valid, handle a page fault. Then, perform the op.
 	if(!pageTables[op.pid][op.virtualPageNum].valid){
-		printf("Page fault\n\n\n");
-		rme r;
-        	for(int i = 0; i<NUM_PHYSICAL_PAGES; i++){
-        		r = physicalMemory[i];
-        		if(r.avail){
-        			printf("rm[%d]: available\n", i);
-        		}
-        		else{
-        			printf("rm[%d]: proc = %u, vpn = %u, ref = %d, dirty = %d\n", i, r.proc, r.vpn, r.referenced, r.dirty );
-        		}
-        	}
+		// printf("Page fault\n\n\n");
+		// rme r;
+  //       	for(int i = 0; i<NUM_PHYSICAL_PAGES; i++){
+  //       		r = physicalMemory[i];
+  //       		if(r.avail){
+  //       			printf("rm[%d]: available\n", i);
+  //       		}
+  //       		else{
+  //       			printf("rm[%d]: proc = %u, vpn = %u, ref = %d, dirty = %d\n", i, r.proc, r.vpn, r.referenced, r.dirty );
+  //       		}
+  //       	}
 		numPageFaults++;
 		//handle page fault
 		handlePageFault(op);
@@ -175,8 +174,8 @@ int parseFile(FILE* file){
         	op.accessType = WRITE;
         }
 
-        printf("%hhu %hx %c\n", pid, address, a);
-        printf("Virtual page: %u\n", op.virtualPageNum);
+        // printf("%hhu %hx %c\n", pid, address, a);
+        // printf("Virtual page: %u\n", op.virtualPageNum);
 
         // if(address == 0xec78){
         // 	rme r;
