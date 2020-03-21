@@ -44,7 +44,7 @@ rme physicalMemory[NUM_PHYSICAL_PAGES];
 
 
 
-uint16_t evictPage(Operation op){
+uint16_t evictPage(){
 	//Look for an unreferenced page frame where the dirty bit is on, and replace it.
 	for(uint16_t i = 0; i<NUM_PHYSICAL_PAGES; i++){
 		if(!physicalMemory[i].referenced && physicalMemory[i].dirty){
@@ -92,7 +92,7 @@ uint16_t evictPage(Operation op){
 
 void handlePageFault(Operation op){
 	//Try searching physical memory for an available page frame. If none are found, evict a page.
-	uint16_t availablePageIndex = -1;
+	int availablePageIndex = -1;
 	for(uint16_t i = 0; i<NUM_PHYSICAL_PAGES; i++){
 		if(physicalMemory[i].avail){
 			availablePageIndex = i;
@@ -101,8 +101,9 @@ void handlePageFault(Operation op){
 	}
 
 	if(availablePageIndex == -1){
-		availablePageIndex = evictPage(op)
+		availablePageIndex = evictPage();
 	}
+
 
 	//Allocate the page frame.  
 	physicalMemory[availablePageIndex].avail = false;
@@ -111,6 +112,7 @@ void handlePageFault(Operation op){
 
 	//Copy the page into physical memory from disk.
 	numDiskAccesses++;
+	physicalMemory[availablePageIndex].dirty = false;
 
 	//Set up translation from virtual page to physical page
 	pageTables[op.pid][op.virtualPageNum].pfn = availablePageIndex;
@@ -120,7 +122,18 @@ void handlePageFault(Operation op){
 
 void performOp(Operation op){
 	//Check the translation. If the translation is not valid, handle a page fault. Then, perform the op.
-	if(!pageTables[op.pid][virtualPageNum].valid){
+	if(!pageTables[op.pid][op.virtualPageNum].valid){
+		printf("Page fault\n\n\n");
+		rme r;
+        	for(int i = 0; i<NUM_PHYSICAL_PAGES; i++){
+        		r = physicalMemory[i];
+        		if(r.avail){
+        			printf("rm[%d]: available\n", i);
+        		}
+        		else{
+        			printf("rm[%d]: proc = %u, vpn = %u, ref = %d, dirty = %d\n", i, r.proc, r.vpn, r.referenced, r.dirty );
+        		}
+        	}
 		numPageFaults++;
 		//handle page fault
 		handlePageFault(op);
@@ -129,11 +142,11 @@ void performOp(Operation op){
 	//Actually perform the operation
 
 	if(op.accessType == WRITE){
-		physicalMemory[pageTables[op.pid][virtualPageNum].pfn].dirty = true;
+		physicalMemory[pageTables[op.pid][op.virtualPageNum].pfn].dirty = true;
 	}
 
 	//Since the page has been accessed, set the reference to true
-	physicalMemory[pageTables[op.pid][virtualPageNum].pfn].referenced = true;
+	physicalMemory[pageTables[op.pid][op.virtualPageNum].pfn].referenced = true;
 
 	//Regardless of operation type, a page access has occurred
 	numMemoryAccesses++;
@@ -147,13 +160,7 @@ int parseFile(FILE* file){
 	char buffer[bufferSize];
 
     while( fgets(buffer, bufferSize, file) != NULL ){
-    	//Every 200 memory accesses, reset all the referenced fields
-    	if(numMemoryAccesses%200 == 0){
-    		for(int i = 0; i<NUM_PHYSICAL_PAGES; i++){
-    			physicalMemory[i].referenced = false;
-    		}
-    	}
-        uint8_t pid = -1;
+        uint8_t pid = 0;
         uint16_t address = 0;
         char a = 0;
         sscanf(buffer, "%hhu %hx %c", &pid, &address, &a);
@@ -168,8 +175,27 @@ int parseFile(FILE* file){
         	op.accessType = WRITE;
         }
 
+        printf("%hhu %hx %c\n", pid, address, a);
+        printf("Virtual page: %u\n", op.virtualPageNum);
+
+        // if(address == 0xec78){
+        // 	rme r;
+        // 	for(int i = 0; i<NUM_PHYSICAL_PAGES; i++){
+        // 		r = physicalMemory[i];
+        // 		printf("rm[%d]: proc = %u, vpn = %u, ref = %d, dirty = %d\n", i, r.proc, r.vpn, r.referenced, r.dirty );
+        // 	}
+        // }
+
         //Operate on the command
         performOp(op);
+        //Every 200 memory accesses, reset all the referenced fields
+    	if(numMemoryAccesses%200 == 0){
+    		for(int i = 0; i<NUM_PHYSICAL_PAGES; i++){
+    			physicalMemory[i].referenced = false;
+    		}
+
+    		//printf("\n\n\n\n\n\n\n\n\n\n\nref bit reset\n\n\n\n\n\n\n\n\n\n\n");
+    	}
 
     }
 
@@ -184,8 +210,8 @@ int parseFile(FILE* file){
 void initDataStructs(){
 	for(int i = 0; i<NUM_PROCESSES; i++){
 		for(int j = 0; j<NUM_PTES; j++){
-			pageTables[i][j].valid = 0;
-			pageTables[i][j].pfn = -1;
+			pageTables[i][j].valid = false;
+			pageTables[i][j].pfn = 33;
 		}
 	}
 	for(int i = 0; i< NUM_PHYSICAL_PAGES; i++){
@@ -193,7 +219,7 @@ void initDataStructs(){
 		physicalMemory[i].dirty = false;
 		physicalMemory[i].referenced = false;
 		physicalMemory[i].proc = -1;
-		physicalMemory[i].vpn = -1;
+		physicalMemory[i].vpn = 129;
 	}
 }
 
